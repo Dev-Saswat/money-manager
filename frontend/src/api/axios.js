@@ -2,7 +2,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 
 const api = axios.create({
-  baseURL: "http://localhost:8080/api/v1",
+  baseURL: "https://money-manager-vkjw.onrender.com/api/v1",
   headers: {
     "Content-Type": "application/json",
   },
