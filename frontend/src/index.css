@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- THEME VARIABLES ---------- */
+
+:root {
+  --bg: #0f172a;          /* slate-900 */
+  --card: #020617;        /* slate-950 */
+  --text: #e5e7eb;        /* gray-200 */
+  --muted: #9ca3af;       /* gray-400 */
+  --accent: #2563eb;      /* blue-600 */
+  --danger: #ef4444;
+}
+
+/* ---------- GLOBAL ---------- */
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system;
+}
+
+/* ---------- REUSABLE DARK COMPONENTS ---------- */
+
+.dark-card {
+  background: var(--card);
+  border: 1px solid #1f2933;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.02),
+              0 10px 30px rgba(0,0,0,0.6);
+}
+
+.dark-input {
+  width: 100%;
+  background: #020617;
+  border: 1px solid #1f2933;
+  color: var(--text);
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  outline: none;
+}
+
+.dark-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.dark-btn {
+  background: var(--accent);
+  color: white;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.dark-btn:hover {
+  background: #1d4ed8;
+}
+
+.dark-table th {
+  color: #9ca3af;
+  font-weight: 500;
+  border-bottom: 1px solid #1f2933;
+}
+
+.dark-table td {
+  border-bottom: 1px solid #1f2933;
+}
+
+.dark-danger {
+  color: var(--danger);
+}
+
+.dark-link {
+  color: #60a5fa;
+}
+
+.dark-link:hover {
+  text-decoration: underline;
+}
