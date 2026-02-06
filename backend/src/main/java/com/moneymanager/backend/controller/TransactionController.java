@@ -5,6 +5,7 @@ import com.moneymanager.backend.model.Transaction;
 import com.moneymanager.backend.service.TransactionService;
 import com.moneymanager.backend.security.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,91 +27,141 @@ public class TransactionController {
 
     private String extractUserId(HttpServletRequest request) {
         String auth = request.getHeader("Authorization");
-        String token = auth.substring(7);
-        return jwtService.extractUserId(token);
+        if (auth == null || !auth.startsWith("Bearer "))
+            throw new RuntimeException("Missing token");
+
+        return jwtService.extractUserId(auth.substring(7));
     }
 
+    // CREATE
     @PostMapping
-    public ResponseEntity<Transaction> create(
+    public Transaction create(
             @RequestBody TransactionRequest request,
             HttpServletRequest httpRequest
     ) {
-        String userId = extractUserId(httpRequest);
-        return ResponseEntity.ok(
-                service.create(userId, request)
+        return service.create(
+                extractUserId(httpRequest),
+                request
         );
     }
 
+    // LIST
     @GetMapping
-    public ResponseEntity<List<Transaction>> list(
-            HttpServletRequest httpRequest
-    ) {
-        String userId = extractUserId(httpRequest);
-        return ResponseEntity.ok(
-                service.getUserTransactions(userId)
+    public List<Transaction> list(HttpServletRequest request) {
+        return service.getUserTransactions(
+                extractUserId(request)
         );
     }
 
+    // UPDATE
     @PutMapping("/{id}")
-    public ResponseEntity<Transaction> update(
+    public Transaction update(
             @PathVariable String id,
             @RequestBody TransactionRequest request,
             HttpServletRequest httpRequest
     ) {
-        String userId = extractUserId(httpRequest);
-        return ResponseEntity.ok(
-                service.update(userId, id, request)
+        return service.update(
+                extractUserId(httpRequest),
+                id,
+                request
         );
     }
 
-    @GetMapping("/summary")
-    public Map<String, Double> summary(HttpServletRequest request) {
-        String userId = extractUserId(request);
-        return service.getSummary(userId);
-    }
-
+    // DELETE
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(
             @PathVariable String id,
             HttpServletRequest request
     ) {
-        String userId = extractUserId(request);
-        service.delete(userId, id);
+        service.delete(extractUserId(request), id);
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/trash")
-    public ResponseEntity<List<Transaction>> trash(
-            HttpServletRequest request
-    ) {
-        String userId = extractUserId(request);
-        return ResponseEntity.ok(
-                service.getDeleted(userId)
-        );
-    }
-
+    // RESTORE
     @PostMapping("/{id}/restore")
     public ResponseEntity<?> restore(
             @PathVariable String id,
             HttpServletRequest request
     ) {
-        String userId = extractUserId(request);
-        service.restore(userId, id);
+        service.restore(extractUserId(request), id);
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/report")
-    public ResponseEntity<?> report(
+    // TRASH
+    @GetMapping("/trash")
+    public List<Transaction> trash(HttpServletRequest request) {
+        return service.getDeleted(
+                extractUserId(request)
+        );
+    }
+
+    // TOTAL SUMMARY
+    @GetMapping("/summary")
+    public Map<String, Double> summary(HttpServletRequest request) {
+        return service.getSummary(
+                extractUserId(request)
+        );
+    }
+
+    // WEEK / MONTH / YEAR
+    @GetMapping("/summary/{period}")
+    public Map<String, Double> summaryByPeriod(
+            @PathVariable String period,
+            HttpServletRequest request
+    ) {
+        return service.getSummaryByPeriod(
+                extractUserId(request),
+                period
+        );
+    }
+
+    // DIVISION FILTER
+    @GetMapping("/division/{division}")
+    public List<Transaction> byDivision(
+            @PathVariable String division,
+            HttpServletRequest request
+    ) {
+        return service.getByDivision(
+                extractUserId(request),
+                division
+        );
+    }
+
+    // DATE RANGE
+    @GetMapping("/range")
+    public List<Transaction> range(
             @RequestParam String from,
             @RequestParam String to,
             HttpServletRequest request
     ) {
-        String userId = extractUserId(request);
-        return ResponseEntity.ok(
-                service.getReport(userId, from, to)
+        return service.betweenDates(
+                extractUserId(request),
+                from,
+                to
         );
     }
 
+    // CATEGORY SUMMARY
+    @GetMapping("/categories")
+    public Map<String, Double> categories(
+            HttpServletRequest request
+    ) {
+        return service.categorySummary(
+                extractUserId(request)
+        );
+    }
 
-
+    // PAGINATION
+    @GetMapping("/page")
+    public Page<Transaction> paged(
+            @RequestParam int page,
+            @RequestParam int size,
+            HttpServletRequest request
+    ) {
+        return service.getPaged(
+                extractUserId(request),
+                page,
+                size
+        );
+    }
 }

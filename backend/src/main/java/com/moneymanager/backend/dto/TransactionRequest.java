@@ -11,5 +11,7 @@ public class TransactionRequest {
     private String category;
     private String description;
     private String accountId;
+    private String division;
+
 }
 

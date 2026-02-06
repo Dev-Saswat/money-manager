@@ -6,6 +6,8 @@ import com.moneymanager.backend.model.Account;
 import com.moneymanager.backend.repository.TransactionRepository;
 import com.moneymanager.backend.repository.AccountRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -66,6 +68,7 @@ public class TransactionService {
                 request.getDescription(),
                 request.getAccountId()
         );
+        tx.setDivision(request.getDivision());
 
         return repo.save(tx);
     }
@@ -352,5 +355,106 @@ public class TransactionService {
         return result;
     }
 
+    public Map<String, Double> getSummaryByPeriod(
+            String userId,
+            String period
+    ) {
+
+        List<Transaction> list =
+                repo.findByUserIdAndDeletedFalse(userId);
+
+        LocalDate today = LocalDate.now();
+
+        double income = 0;
+        double expense = 0;
+
+        for (Transaction t : list) {
+
+            LocalDate d = t.getCreatedAt().toLocalDate();
+
+            boolean match = switch (period.toLowerCase()) {
+                case "week" ->
+                        d.isAfter(today.minusDays(7));
+                case "year" ->
+                        d.getYear() == today.getYear();
+                default -> // month
+                        d.getMonth() == today.getMonth()
+                                && d.getYear() == today.getYear();
+            };
+
+            if (!match) continue;
+
+            if (t.getType().equals("income"))
+                income += t.getAmount();
+            else if (t.getType().equals("expense"))
+                expense += t.getAmount();
+        }
+
+        Map<String, Double> result = new HashMap<>();
+        result.put("income", income);
+        result.put("expense", expense);
+        result.put("balance", income - expense);
+        return result;
+    }
+
+    public List<Transaction> getByDivision(
+            String userId,
+            String division
+    ) {
+        return repo.findByUserIdAndDivisionAndDeletedFalse(
+                userId, division
+        );
+    }
+
+    public List<Transaction> betweenDates(
+            String userId,
+            String from,
+            String to
+    ) {
+
+        LocalDate start = LocalDate.parse(from);
+        LocalDate end = LocalDate.parse(to);
+
+        return repo.findByUserIdAndDeletedFalse(userId)
+                .stream()
+                .filter(t -> {
+                    LocalDate d =
+                            t.getCreatedAt().toLocalDate();
+                    return !d.isBefore(start)
+                            && !d.isAfter(end);
+                })
+                .toList();
+    }
+
+    public Map<String, Double> categorySummary(String userId) {
+
+        Map<String, Double> map = new HashMap<>();
+
+        List<Transaction> list =
+                repo.findByUserIdAndDeletedFalse(userId);
+
+        for (Transaction t : list) {
+            if (t.getType().equals("expense")) {
+                map.put(
+                        t.getCategory(),
+                        map.getOrDefault(
+                                t.getCategory(), 0.0
+                        ) + t.getAmount()
+                );
+            }
+        }
+        return map;
+    }
+
+    public Page<Transaction> getPaged(
+            String userId,
+            int page,
+            int size
+    ) {
+        return repo.findByUserIdAndDeletedFalse(
+                userId,
+                PageRequest.of(page, size)
+        );
+    }
 
 }

@@ -21,17 +21,18 @@ function Dashboard() {
   // STATE
   // =======================
 
-  const [allTransactions, setAllTransactions] = useState([]);
-  const [recent, setRecent] = useState([]);
-
   const [summary, setSummary] = useState({
     income: 0,
     expense: 0,
     balance: 0
   });
 
-  const [period, setPeriod] = useState("month"); // week | month | year
+  const [recent, setRecent] = useState([]);
+
+  const [period, setPeriod] = useState("month"); 
   const [categoryFilter, setCategoryFilter] = useState("");
+
+  const [categoryData, setCategoryData] = useState([]);
 
   const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#f59e0b"];
 
@@ -39,112 +40,74 @@ function Dashboard() {
     new Intl.NumberFormat("en-IN").format(n);
 
   // =======================
-  // FETCH ALL TRANSACTIONS
+  // FETCH SUMMARY
   // =======================
 
-  const fetchData = async () => {
+  const fetchSummary = async () => {
     try {
-      const res = await api.get("/transactions");
-      setAllTransactions(res.data);
+      const res = await api.get(
+        `/transactions/summary/${period}`
+      );
+      setSummary(res.data);
     } catch (err) {
       console.error(err);
     }
   };
 
   // =======================
-  // PERIOD FILTER
+  // FETCH RECENT
   // =======================
 
-  const filterByPeriod = (tx) => {
-    const date = new Date(tx.createdAt);
-    const now = new Date();
+  const fetchRecent = async () => {
+    try {
+      const res = await api.get("/transactions");
 
-    if (period === "week") {
-      const diff =
-        (now - date) / (1000 * 60 * 60 * 24);
-      return diff <= 7;
-    }
+      const filtered = res.data.filter(t => {
+        if (categoryFilter && t.category !== categoryFilter)
+          return false;
+        return true;
+      });
 
-    if (period === "month") {
-      return (
-        date.getMonth() === now.getMonth() &&
-        date.getFullYear() === now.getFullYear()
+      const sorted = [...filtered].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
-    }
 
-    if (period === "year") {
-      return date.getFullYear() === now.getFullYear();
-    }
+      setRecent(sorted.slice(0, 5));
 
-    return true;
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // =======================
-  // CALCULATE DASHBOARD
+  // FETCH CATEGORY PIE
   // =======================
 
-  const calculateDashboard = () => {
+  const fetchCategories = async () => {
+    try {
+      const res = await api.get("/transactions/categories");
 
-    const filtered = allTransactions.filter(t => {
+      const formatted = Object.keys(res.data).map(key => ({
+        name: key,
+        value: res.data[key]
+      }));
 
-      if (!filterByPeriod(t)) return false;
+      setCategoryData(formatted);
 
-      if (categoryFilter && t.category !== categoryFilter)
-        return false;
-
-      return true;
-    });
-
-    let income = 0;
-    let expense = 0;
-
-    filtered.forEach(t => {
-      if (t.type === "income") income += t.amount;
-      if (t.type === "expense") expense += t.amount;
-    });
-
-    setSummary({
-      income,
-      expense,
-      balance: income - expense
-    });
-
-    const sorted = [...filtered].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
-
-    setRecent(sorted.slice(0, 5));
-  };
-
-  // =======================
-  // CATEGORY PIE DATA
-  // =======================
-
-  const categoryMap = {};
-
-  recent.forEach(t => {
-    if (t.type === "expense") {
-      categoryMap[t.category] =
-        (categoryMap[t.category] || 0) + t.amount;
+    } catch (err) {
+      console.error(err);
     }
-  });
-
-  const categoryData = Object.keys(categoryMap).map(key => ({
-    name: key,
-    value: categoryMap[key]
-  }));
+  };
 
   // =======================
   // EFFECTS
   // =======================
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    calculateDashboard();
-  }, [allTransactions, period, categoryFilter]);
+    fetchSummary();
+    fetchRecent();
+    fetchCategories();
+  }, [period, categoryFilter]);
 
   // =======================
   // UI
@@ -156,6 +119,34 @@ function Dashboard() {
       <h1 className="text-3xl font-bold mb-6 text-white">
         Dashboard Overview
       </h1>
+
+      {/* FILTER BAR */}
+      <div className="flex flex-wrap gap-4 mb-8">
+
+        <select
+          value={period}
+          onChange={(e) => setPeriod(e.target.value)}
+          className="bg-slate-950 border border-slate-800 text-gray-200 p-2 rounded-lg"
+        >
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+          <option value="year">This Year</option>
+        </select>
+
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="bg-slate-950 border border-slate-800 text-gray-200 p-2 rounded-lg"
+        >
+          <option value="">All Categories</option>
+          {categoryData.map(c => (
+            <option key={c.name} value={c.name}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
+      </div>
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -183,43 +174,15 @@ function Dashboard() {
 
       </div>
 
-      {/* FILTER BAR */}
-      <div className="flex flex-wrap gap-4 mb-8">
-
-        {/* PERIOD */}
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          className="bg-slate-950 border border-slate-800 text-gray-200 p-2 rounded-lg"
-        >
-          <option value="week">This Week</option>
-          <option value="month">This Month</option>
-          <option value="year">This Year</option>
-        </select>
-
-        {/* CATEGORY */}
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="bg-slate-950 border border-slate-800 text-gray-200 p-2 rounded-lg"
-        >
-          <option value="">All Categories</option>
-          {categoryData.map(c => (
-            <option key={c.name} value={c.name}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
-      </div>
-
       {/* BAR CHART */}
       <div className="bg-slate-950 border border-slate-800 p-6 rounded-xl shadow mb-10">
+
         <h2 className="text-xl font-semibold mb-3 text-gray-200">
           Income vs Expense
         </h2>
 
         <div className="h-64">
+
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={[
@@ -228,35 +191,13 @@ function Dashboard() {
               ]}
               barSize={70}
             >
-              {/* Gradient */}
-              <defs>
-                <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#1d4ed8" />
-                </linearGradient>
-              </defs>
 
-              <CartesianGrid
-                stroke="#1f2933"
-                strokeDasharray="3 3"
-                vertical={false}
-              />
+              <CartesianGrid stroke="#1f2933" strokeDasharray="3 3" />
 
-              <XAxis
-                dataKey="name"
-                stroke="#9ca3af"
-                tickLine={false}
-                axisLine={false}
-              />
-
-              <YAxis
-                stroke="#9ca3af"
-                tickLine={false}
-                axisLine={false}
-              />
+              <XAxis dataKey="name" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
 
               <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.04)" }}
                 contentStyle={{
                   backgroundColor: "#020617",
                   border: "1px solid #1f2933",
@@ -268,13 +209,15 @@ function Dashboard() {
 
               <Bar
                 dataKey="value"
-                fill="url(#barGradient)"
+                fill="#3b82f6"
                 radius={[10, 10, 0, 0]}
               />
 
             </BarChart>
           </ResponsiveContainer>
+
         </div>
+
       </div>
 
       {/* PIE CHART */}
@@ -288,8 +231,11 @@ function Dashboard() {
           <p className="text-gray-400">No expense data</p>
         ) : (
           <div className="h-64">
+
             <ResponsiveContainer width="100%" height="100%">
+
               <PieChart>
+
                 <Pie
                   data={categoryData}
                   dataKey="value"
@@ -303,10 +249,14 @@ function Dashboard() {
                     />
                   ))}
                 </Pie>
-                <Legend />
+
                 <Tooltip />
+                <Legend />
+
               </PieChart>
+
             </ResponsiveContainer>
+
           </div>
         )}
 
@@ -322,10 +272,10 @@ function Dashboard() {
         <table className="w-full text-gray-300">
 
           <thead>
-            <tr className="text-left border-b border-slate-800 text-gray-400">
-              <th className="p-2">Type</th>
-              <th className="p-2">Amount</th>
-              <th className="p-2">Category</th>
+            <tr className="border-b border-slate-800 text-gray-400">
+              <th className="p-2 text-left">Type</th>
+              <th className="p-2 text-left">Amount</th>
+              <th className="p-2 text-left">Category</th>
             </tr>
           </thead>
 

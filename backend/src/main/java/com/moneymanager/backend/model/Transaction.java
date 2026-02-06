@@ -25,6 +25,7 @@ public class Transaction {
     private LocalDateTime createdAt;
     private String groupId;
     private boolean deleted = false;
+    private String division;   // OFFICE or PERSONAL
 
 
 
